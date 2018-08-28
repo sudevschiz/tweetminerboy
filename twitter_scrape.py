@@ -1,12 +1,12 @@
-import tweepy
-import jsonpickle
-import json
-import unicodecsv as csv
-import pandas as pd
-import numpy as np
-import os
 import csv
+import json
 from datetime import date
+
+import jsonpickle
+import numpy as np
+import pandas as pd
+import tweepy
+import unicodecsv as csv
 
 
 def specific_attr(tweet_data):
@@ -20,10 +20,20 @@ def specific_attr(tweet_data):
 
     text = tweet_data["full_text"]
 
-    return user_id,user_name,user_followers_count,user_favourites_count,user_listed_count,user_verified,text
+    # Coordinates
+    try:
+        coordinates = tweet_data["coordinates"]["coordinates"]
+    except TypeError:
+        coordinates = ""
+
+    # Encode names and text to utf-8
+    user_name = user_name.encode('utf-8')
+    text = text.encode('utf-8')
+
+    return user_id, user_name, user_followers_count, user_favourites_count, user_listed_count, user_verified, coordinates, text
 
 
-def fetch_tweets(searchQuery):
+def fetch_tweets(searchquery):
     try:
       with open('key_file.json') as f:
         consumer = json.load(f)
@@ -35,45 +45,48 @@ def fetch_tweets(searchQuery):
     auth.secure = True
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-    q = searchQuery
-    tweetsPerQry = 100
+    q = searchquery
+    tweetsperqry = 100
 
-    maxTweets = 2000000
+    maxtweets = 2000000
     max_id = -1
-    tweetCount = 0
+    tweetcount = 0
 
-    print("Downloading max {0} tweets".format(maxTweets))
+    print("Downloading max {0} tweets".format(maxtweets))
+
     try:
-        temp = pd.read_csv(searchQuery + "_tweets.csv")
-        ID_col = pd.to_numeric(temp['id'], errors='coerce').fillna(0).astype(np.int64)
-        sinceId = max(ID_col)
-        print(sinceId)
-    except:
-        print("pandas didn't work")
-        sinceId = None
+        temp = pd.read_csv("./mined_tweets/" + searchquery + "_tweets.csv")
+        id_col = pd.to_numeric(temp['id'], errors='coerce').fillna(0).astype(np.int64)
+        sinceid = max(id_col)
+        print(sinceid)
+    except (IOError, ValueError):
+        print("Warning : A previous file for this keyword was not found. Creating a new output file.")
+        sinceid = None
 
-    with open(searchQuery + '_tweets.csv', 'ab') as f:
+    with open("./mined_tweets/" + searchquery + '_tweets.csv', 'a') as f:
         writer = csv.writer(f)
 
-        if (sinceId == None):
-            writer.writerow(["id", "fetch_date", "created_at", "rt_status", "user_id","user_name","user_followers_count","user_favourites_count","user_listed_count","user_verified","text"])
+        if sinceid == None:
+            writer.writerow(
+                ["id", "fetch_date", "created_at", "rt_status", "user_id", "user_name", "user_followers_count",
+                 "user_favourites_count", "user_listed_count", "user_verified", "coordinates", "text"])
 
-        while tweetCount < maxTweets:
+        while tweetcount < maxtweets:
             try:
-                if (max_id <= 0):
-                    if (not sinceId):
-                        new_tweets = api.search(q=searchQuery, tweet_mode="extended", count=tweetsPerQry)
+                if max_id <= 0:
+                    if not sinceid:
+                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry)
                     else:
-                        new_tweets = api.search(q=searchQuery, tweet_mode="extended", count=tweetsPerQry,
-                                                since_id=sinceId)
+                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
+                                                since_id=sinceid)
                 else:
-                    if (not sinceId):
-                        new_tweets = api.search(q=searchQuery, tweet_mode="extended", count=tweetsPerQry,
+                    if not sinceid:
+                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
                                                 max_id=str(max_id - 1))
                     else:
-                        new_tweets = api.search(q=searchQuery, tweet_mode="extended", count=tweetsPerQry,
+                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
                                                 max_id=str(max_id - 1),
-                                                since_id=sinceId)
+                                                since_id=sinceid)
                 if not new_tweets:
                     print("No more tweets found")
                     break
@@ -97,15 +110,15 @@ def fetch_tweets(searchQuery):
                     spec_attr = specific_attr(tweet_data)
 
                     fetch_date = str(date.today())
-                    
+
                     row_list = list()
                     row_list.extend([id,fetch_date,created_at,rt_status])
                     row_list.extend(spec_attr)
-                    
+
                     writer.writerow(row_list)
 
-                tweetCount += len(new_tweets)
-                print("Downloaded {0} tweets".format(tweetCount))
+                tweetcount += len(new_tweets)
+                print("Downloaded {0} tweets".format(tweetcount))
                 max_id = new_tweets[-1].id
             except tweepy.TweepError as e:
                 # Just exit if any error
