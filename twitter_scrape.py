@@ -26,7 +26,7 @@ def specific_attr(tweet_data):
     except TypeError:
         coordinates = ""
 
-    # Encode names and text to utf-8
+    # Encode names
     user_name = user_name.encode('utf-8')
     text = text.encode('utf-8')
 
@@ -53,14 +53,13 @@ def fetch_tweets(searchquery):
     tweetcount = 0
 
     print("Downloading max {0} tweets".format(maxtweets))
-
     try:
         temp = pd.read_csv("./mined_tweets/" + searchquery + "_tweets.csv")
         id_col = pd.to_numeric(temp['id'], errors='coerce').fillna(0).astype(np.int64)
         sinceid = max(id_col)
         print(sinceid)
     except (IOError, ValueError):
-        print("Warning : A previous file for this keyword was not found. Creating a new output file.")
+        print("W : New keyword - New file created")
         sinceid = None
 
     with open("./mined_tweets/" + searchquery + '_tweets.csv', 'a') as f:
