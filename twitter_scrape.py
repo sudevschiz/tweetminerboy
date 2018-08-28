@@ -5,6 +5,7 @@ import unicodecsv as csv
 import pandas as pd
 import numpy as np
 import os
+import csv
 from datetime import date
 
 
@@ -23,13 +24,14 @@ def specific_attr(tweet_data):
 
 
 def fetch_tweets(searchQuery):
-    # consumer key, consumer secret, access token, access secret.
-    ckey = "LPU0P3rStPE4u32FUMjGa6cN1"
-    csecret = "mv3clTKi1mJmnZhVQh3ZkXoMj7s6CaRRfI1dj2Cykspc33KnLu"
-    # atoken="597081592-SIwP953Pt1JBJojNHGSlb5mIOO1OfsF3QPDtvsi5"
-    # asecret="gnaiAas66LwrsSjHq1w5mEpMKTqcruu73GyZSzcSNKOU9"
+    try:
+      with open('key_file.json') as f:
+        consumer = json.load(f)
+    except:
+      print("Authentication credentials not found. Fix the 'key_file.json' file")
+      return
 
-    auth = tweepy.AppAuthHandler(ckey, csecret)
+    auth = tweepy.AppAuthHandler(consumer['ckey'], consumer['csecret'])
     auth.secure = True
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
