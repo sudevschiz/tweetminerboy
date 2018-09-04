@@ -9,6 +9,6 @@ if not os.path.exists(newpath):
 searchList = ["journey mapping software", "customer experience", "journey mapping", "#CX", "#customerjourneymapping",
               "#CustomerJourney", "#CustomerExperience", "@forrester", "@IDC", "@HfSResearch", "@Mapovate", "@SuiteCX",
               "@TandemSeven", "@dtnpf", "@symantec", "@NortonOnline", "@PCGPPL"]
-# searchList = ["@PMOIndia"]
+# searchList = ["#Rebuildkerala"]
 for item in searchList:
     ts.fetch_tweets(item)    

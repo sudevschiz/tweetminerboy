@@ -27,8 +27,8 @@ def specific_attr(tweet_data):
         coordinates = ""
 
     # Encode names
-    user_name = user_name.encode('utf-8')
-    text = text.encode('utf-8')
+    # user_name = user_name.encode('utf-8')
+    # text = text.encode('utf-8')
 
     return user_id, user_name, user_followers_count, user_favourites_count, user_listed_count, user_verified, coordinates, text
 
@@ -62,9 +62,9 @@ def fetch_tweets(searchquery):
         print("W : New keyword - New file created")
         sinceid = None
 
-    with open("./mined_tweets/" + searchquery + '_tweets.csv', 'a') as f:
+    with open("./mined_tweets/" + searchquery + '_tweets.csv', 'ab') as f:
         writer = csv.writer(f)
-
+        print("Fetching tweets for the keyword : " + searchquery)
         if sinceid == None:
             writer.writerow(
                 ["id", "fetch_date", "created_at", "rt_status", "user_id", "user_name", "user_followers_count",
