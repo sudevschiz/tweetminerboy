@@ -6,7 +6,6 @@ import jsonpickle
 import numpy as np
 import pandas as pd
 import tweepy
-import unicodecsv as csv
 
 
 def specific_attr(tweet_data):
@@ -30,22 +29,22 @@ def specific_attr(tweet_data):
     # user_name = user_name.encode('utf-8')
     # text = text.encode('utf-8')
 
-    return user_id, user_name, user_followers_count, user_favourites_count, user_listed_count, user_verified, coordinates, text
+    return user_id, user_name, user_followers_count, user_favourites_count, user_listed_count, user_verified, \
+           coordinates, text
 
 
 def fetch_tweets(searchquery):
     try:
-      with open('key_file.json') as f:
-        consumer = json.load(f)
-    except:
-      print("Authentication credentials not found. Fix the 'key_file.json' file")
-      return
+        with open('key_file.json') as f:
+            consumer = json.load(f)
+    except FileNotFoundError:
+        print("Authentication credentials not found. Fix the 'key_file.json' file")
+        return
 
     auth = tweepy.AppAuthHandler(consumer['ckey'], consumer['csecret'])
     auth.secure = True
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
-    q = searchquery
     tweetsperqry = 100
 
     maxtweets = 2000000
@@ -62,67 +61,69 @@ def fetch_tweets(searchquery):
         print("W : New keyword - New file created")
         sinceid = None
 
-    with open("./mined_tweets/" + searchquery + '_tweets.csv', 'ab') as f:
+    with open("./mined_tweets/" + searchquery + '_tweets.csv', 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         print("Fetching tweets for the keyword : " + searchquery)
-        if sinceid == None:
+        if sinceid is None:
             writer.writerow(
                 ["id", "fetch_date", "created_at", "rt_status", "user_id", "user_name", "user_followers_count",
                  "user_favourites_count", "user_listed_count", "user_verified", "coordinates", "text"])
 
-        while tweetcount < maxtweets:
-            try:
-                if max_id <= 0:
-                    if not sinceid:
-                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry)
+            while tweetcount < maxtweets:
+                try:
+                    if max_id <= 0:
+                        if not sinceid:
+                            new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry)
+                        else:
+                            new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
+                                                    since_id=sinceid)
                     else:
-                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
-                                                since_id=sinceid)
-                else:
-                    if not sinceid:
-                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
-                                                max_id=str(max_id - 1))
-                    else:
-                        new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
-                                                max_id=str(max_id - 1),
-                                                since_id=sinceid)
-                if not new_tweets:
-                    print("No more tweets found")
+                        if not sinceid:
+                            new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
+                                                    max_id=str(max_id - 1))
+                        else:
+                            new_tweets = api.search(q=searchquery, tweet_mode="extended", count=tweetsperqry,
+                                                    max_id=str(max_id - 1),
+                                                    since_id=sinceid)
+                    if not new_tweets:
+                        print("No more tweets found")
+                        break
+
+                    for tweet in new_tweets:
+                        print(tweet)
+                        # print(tweet.full_text)
+                        all_data = json.loads(jsonpickle.encode(tweet._json, unpicklable=False))
+                        # all_data = json.loads(tweet)
+                        tweet_id = int(all_data["id_str"])
+                        # print(id)
+                        created_at = all_data["created_at"]
+                        # Add the coordinates
+
+                        if hasattr(tweet, 'retweeted_status'):
+                            rt_status = 1
+                            tweet_data = all_data["retweeted_status"]
+
+                        else:
+                            rt_status = 0
+                            tweet_data = all_data
+
+                        spec_attr = specific_attr(tweet_data)
+
+                        fetch_date = str(date.today())
+
+                        row_list = list()
+                        row_list.extend([tweet_id, fetch_date, created_at, rt_status])
+                        row_list.extend(spec_attr)
+                        # print(row_list)
+
+                        writer.writerow(row_list)
+
+                    tweetcount += len(new_tweets)
+                    print("Downloaded {0} tweets".format(tweetcount))
+                    max_id = new_tweets[-1].id
+                except tweepy.TweepError as e:
+                    # Just exit if any error
+                    print("some error : " + str(e))
                     break
 
-                for tweet in new_tweets:
-                    # print(tweet.full_text)
-                    all_data = json.loads(jsonpickle.encode(tweet._json, unpicklable=False))
-                    id = int(all_data["id_str"])
-                    # print(id)
-                    created_at = all_data["created_at"]
-                    # Add the coordinates
-
-                    if hasattr(tweet, 'retweeted_status'):
-                        rt_status = 1
-                        tweet_data = all_data["retweeted_status"]
-
-                    else:
-                        rt_status = 0
-                        tweet_data = all_data
-
-                    spec_attr = specific_attr(tweet_data)
-
-                    fetch_date = str(date.today())
-
-                    row_list = list()
-                    row_list.extend([id,fetch_date,created_at,rt_status])
-                    row_list.extend(spec_attr)
-
-                    writer.writerow(row_list)
-
-                tweetcount += len(new_tweets)
-                print("Downloaded {0} tweets".format(tweetcount))
-                max_id = new_tweets[-1].id
-            except tweepy.TweepError as e:
-                # Just exit if any error
-                print("some error : " + str(e))
-                break
-
     print("Downloaded all tweets")
-
